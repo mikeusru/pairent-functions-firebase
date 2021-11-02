@@ -1,0 +1,47 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "chats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "user_ids",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "latest_message_date",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "chats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "user_ids",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "latest_message_time",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "chats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "user_ids",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "latest_message_time",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
