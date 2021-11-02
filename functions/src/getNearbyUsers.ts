@@ -2,6 +2,8 @@
 import * as functions from "firebase-functions";
 import {geohashQueryBounds, distanceBetween} from "geofire-common";
 import {db} from "./db";
+import {Response} from "express";
+
 const radiusInM = 1 * 1000;
 const radiusArray = [
   radiusInM,
@@ -11,7 +13,8 @@ const radiusArray = [
   radiusInM * 100,
 ];
 
-export const getNearbyUsers = functions.firestore.document("/profiles/{documentId}")
+export const getNearbyUsers = functions.firestore
+    .document("/profiles/{documentId}")
     .onCreate(async (snap, context) => {
       try {
         const location = snap.data().location;
@@ -21,16 +24,48 @@ export const getNearbyUsers = functions.firestore.document("/profiles/{documentI
         let matchingIDs = checkForFalsePositivesAndSort(snapshots, center);
         matchingIDs = removeUserIdFromArray(
             context.params.documentId,
-            matchingIDs);
-        await snap.ref.update({"top_picks": matchingIDs, "top_picks_loaded": true});
+            matchingIDs
+        );
+        await snap.ref.update({top_picks: matchingIDs, top_picks_loaded: true});
       } catch (error) {
         console.log(error);
       }
     });
 
-export const getNearbyUsersOnRequest = functions.https.onRequest((req, res) => {
+type Request = {
+  params: { userID: string }
+}
 
-})
+export const getNearbyUsersForUserId = async (req: Request, res: Response) => {
+  console.log(`userID: ${req.params.userID}`);
+  const {params: {userID}} = req;
+  try {
+    console.log(`userID: ${userID}`);
+    const userRef = db.collection("profiles").doc(userID);
+    const doc = await userRef.get();
+    if (!doc.exists) {
+      console.log("No such user");
+    }
+    const data = doc.data();
+    if (data) {
+      const location = data.location;
+      const geoPoint = location.geo_point;
+      const center = [geoPoint.latitude, geoPoint.longitude];
+      const snapshots = await queryByLocation(center);
+      let matchingIDs = checkForFalsePositivesAndSort(snapshots, center);
+      matchingIDs = removeUserIdFromArray(
+          req.params.userID,
+          matchingIDs
+      );
+      return res.status(200).json(matchingIDs);
+    } else {
+      return res.status(400).json("Error - profile not found");
+    }
+  } catch (error) {
+    const errorMessage = (error instanceof Error) ? error.message : "Unknown Error";
+    return res.status(500).json(errorMessage);
+  }
+};
 
 // eslint-disable-next-line require-jsdoc
 async function queryByLocation(center: number[]): Promise<FireSnapshot[]> {
@@ -39,7 +74,8 @@ async function queryByLocation(center: number[]): Promise<FireSnapshot[]> {
     const bounds = geohashQueryBounds(center, radius);
     const promises = [];
     for (const b of bounds) {
-      const q = db.collection("profiles")
+      const q = db
+          .collection("profiles")
           .orderBy("location.geo_hash")
           .startAt(b[0])
           .endAt(b[1]);
@@ -51,11 +87,16 @@ async function queryByLocation(center: number[]): Promise<FireSnapshot[]> {
     for (const snap of snapshots) {
       console.log("Snapshot Size: ", snap.size);
     }
-    const totalDocumentsInSnapshot = snapshots
-        .reduce((sum, current) => sum + current.size, 0);
-    console.log("queryByLocation found ",
-        totalDocumentsInSnapshot, " snapshots for radius: ",
-        radius);
+    const totalDocumentsInSnapshot = snapshots.reduce(
+        (sum, current) => sum + current.size,
+        0
+    );
+    console.log(
+        "queryByLocation found ",
+        totalDocumentsInSnapshot,
+        " snapshots for radius: ",
+        radius
+    );
     if (totalDocumentsInSnapshot > 50) {
       break;
     }
@@ -63,14 +104,16 @@ async function queryByLocation(center: number[]): Promise<FireSnapshot[]> {
   return snapshots;
 }
 
-  type DocData = FirebaseFirestore.DocumentData;
-  type FireSnapshot = FirebaseFirestore.QuerySnapshot<DocData>
+type DocData = FirebaseFirestore.DocumentData;
+type FireSnapshot = FirebaseFirestore.QuerySnapshot<DocData>;
 
 // eslint-disable-next-line require-jsdoc
-function checkForFalsePositivesAndSort(snapshots: FireSnapshot[],
-    center: number[]) {
+function checkForFalsePositivesAndSort(
+    snapshots: FireSnapshot[],
+    center: number[]
+) {
   console.log("Checking for false positives");
-  const idDistance: Array<{id: string, distance: number}> = [];
+  const idDistance: Array<{ id: string; distance: number }> = [];
   for (const snap of snapshots) {
     for (const doc of snap.docs) {
       const location = doc.data().location;
@@ -105,4 +148,3 @@ function removeUserIdFromArray(userID: string, idArray: string[]): string[] {
   }
   return idArray;
 }
-
