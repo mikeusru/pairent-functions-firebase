@@ -36,6 +36,43 @@ type Request = {
   params: { userID: string }
 }
 
+export const setTopPicksForUserId = functions.https.onCall(async (_, context) => {
+  // Checking that the user is authenticated.
+  if (!context.auth) {
+    // Throwing an HttpsError so that the client gets the error details.
+    throw new functions.https.HttpsError("failed-precondition", "The function must be called " +
+          "while authenticated.");
+  }
+  // [END messageHttpsErrors]
+  try {
+    const userID = context.auth.uid;
+    const userRef = db.collection("profiles").doc(userID);
+    const doc = await userRef.get();
+    if (!doc.exists) {
+      console.log("No such user");
+    }
+    const data = doc.data();
+    if (data) {
+      const location = data.location;
+      const geoPoint = location.geo_point;
+      const center = [geoPoint.latitude, geoPoint.longitude];
+      const snapshots = await queryByLocation(center);
+      let matchingIDs = checkForFalsePositivesAndSort(snapshots, center);
+      matchingIDs = removeUserIdFromArray(
+          userID,
+          matchingIDs
+      );
+      await userRef.update({top_picks: matchingIDs, top_picks_loaded: true});
+      return {text: "Success"};
+    } else {
+      throw new functions.https.HttpsError("not-found", "The function must be called with a valid user ID");
+    }
+  } catch (error) {
+    const errorMessage = (error instanceof Error) ? error.message : "Unknown Error";
+    throw new functions.https.HttpsError("unknown", errorMessage, error);
+  }
+});
+
 export const getNearbyUsersForUserId = async (req: Request, res: Response) => {
   console.log(`userID: ${req.params.userID}`);
   const {params: {userID}} = req;

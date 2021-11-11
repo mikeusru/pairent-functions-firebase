@@ -5,7 +5,7 @@ import * as functions from "firebase-functions";
 admin.initializeApp();
 
 export {messageNotification} from "./messageNotification";
-export {getNearbyUsers} from "./getNearbyUsers";
+export {getNearbyUsers, setTopPicksForUserId} from "./getNearbyUsers";
 export {subscribe} from "./subscribe";
 export {contactUs} from "./contact";
 
