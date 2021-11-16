@@ -73,6 +73,7 @@ export const setTopPicksForUserId = functions.https.onCall(async (_, context) =>
   }
 });
 
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export const getNearbyUsersForUserId = async (req: Request, res: Response) => {
   console.log(`userID: ${req.params.userID}`);
   const {params: {userID}} = req;

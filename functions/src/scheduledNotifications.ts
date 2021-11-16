@@ -2,8 +2,9 @@
 
 import * as functions from "firebase-functions";
 import {db} from "./db";
-// import * as _ from "lodash";
+import * as _ from "lodash";
 import {sprintf} from "sprintf-js";
+import {messaging} from "./messaging";
 
 type Payload = {
     notification: {
@@ -93,37 +94,34 @@ async function notifyUserToCompleteProfile(id: string, data: FirebaseFirestore.D
   const payload: Payload = {
     notification: {
       title: "Complete your Pairent profile!",
-      body: sprintf("Your profile is %d% complete. Finish it up!", percent),
+      body: sprintf("Your profile is %d%% complete. Show yourself off by completing your profile!", percent),
       sound: "default",
     },
     data: {
       percentComplete: percent.toString(),
     },
   };
-  console.log("user %{id} payload:\n");
-  console.log(payload);
-  console.log(fcmTokens);
-  // messaging().sendToDevice(fcmTokens, payload).then( (response) => {
-  //   const stillRegisteredTokens = fcmTokens;
-  //   response.results.forEach((result, index) => {
-  //     const error = result.error;
-  //     const failedToken = fcmTokens[index];
-  //     if (error) {
-  //       console.error("Problem with sending message to device with token ", failedToken, error);
-  //       if (error.code === "messaging/invalid-registration-token" ||
-  //       error.code === "messaging/registration-token-not-registered") {
-  //         const failedIndex = stillRegisteredTokens.indexOf(failedToken);
-  //         if (failedIndex > -1) {
-  //           stillRegisteredTokens.splice(failedIndex, 1);
-  //         }
-  //       }
-  //     }
-  //   });
-  //   if (!(_.isEqual(fcmTokens.sort(), stillRegisteredTokens.sort()))) {
-  //     console.log("Updating user fcm tokens");
-  //     db.doc("profiles/" + id).update({
-  //       fcm_tokens: stillRegisteredTokens,
-  //     });
-  //   }
-  // });
+  messaging().sendToDevice(fcmTokens, payload).then( (response) => {
+    const stillRegisteredTokens = fcmTokens;
+    response.results.forEach((result, index) => {
+      const error = result.error;
+      const failedToken = fcmTokens[index];
+      if (error) {
+        console.error("Problem with sending message to device with token ", failedToken, error);
+        if (error.code === "messaging/invalid-registration-token" ||
+        error.code === "messaging/registration-token-not-registered") {
+          const failedIndex = stillRegisteredTokens.indexOf(failedToken);
+          if (failedIndex > -1) {
+            stillRegisteredTokens.splice(failedIndex, 1);
+          }
+        }
+      }
+    });
+    if (!(_.isEqual(fcmTokens.sort(), stillRegisteredTokens.sort()))) {
+      console.log("Updating user fcm tokens");
+      db.doc("profiles/" + id).update({
+        fcm_tokens: stillRegisteredTokens,
+      });
+    }
+  });
 }
