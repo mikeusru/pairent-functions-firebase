@@ -8,7 +8,7 @@ export {messageNotification} from "./messageNotification";
 export {getNearbyUsers, setTopPicksForUserId} from "./getNearbyUsers";
 export {subscribe} from "./subscribe";
 export {contactUs} from "./contact";
-
+export {remindUsersToUpdateProfile} from "./scheduledNotifications";
 import {getNearbyUsersForUserId} from "./getNearbyUsers";
 const app = express();
 app.get("/nearby-users/:userID", getNearbyUsersForUserId);

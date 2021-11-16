@@ -51,7 +51,6 @@ export const messageNotification = functions.firestore.document("/chats/{convers
 async function sendNotifications(fcmTokens: string[], payload: Payload, recipientId: string) {
   messaging().sendToDevice(fcmTokens, payload).then( (response) => {
     const stillRegisteredTokens = fcmTokens;
-    // TODO: Can check for failed registration tokens here
     response.results.forEach((result, index) => {
       const error = result.error;
       const failedToken = fcmTokens[index];
