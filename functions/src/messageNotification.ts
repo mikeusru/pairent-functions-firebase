@@ -10,10 +10,12 @@ type Payload = {
     title: string,
     body: string,
     sound: string,
+    badge: string,
   },
   data: {
     conversationID: string,
-    messageID: string
+    messageID: string,
+    navigateTo: string,
   }
 }
 
@@ -36,10 +38,12 @@ export const messageNotification = functions.firestore.document("/chats/{convers
             title: senderName + " sent you a message.",
             body: notificationBody,
             sound: "default",
+            badge: "0",
           },
           data: {
             conversationID: context.params.conversationId,
             messageID: context.params.messageId,
+            navigateTo: "chats",
           },
         };
         await sendNotifications(fcmTokens, payload, recipient.id);

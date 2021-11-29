@@ -14,6 +14,7 @@ type Payload = {
     },
     data: {
       percentComplete: string,
+      navigateTo: string,
     }
   }
 
@@ -48,6 +49,27 @@ function getPercentComplete(data: FirebaseFirestore.DocumentData): number {
   return percentCalc.getPercentComplete();
 }
 
+/**
+ * Calculates amount of badge notifications the user has
+ * @param {FirebaseFirestore.DocumentData} data The profile from the snapshot
+ * @return {int} The percentage of the profile which is complete
+ */
+function getNotificationAmount(data: FirebaseFirestore.DocumentData): number {
+  let count = 0;
+  if ("messages" in data) {
+    count = count + data["messages"].length;
+  }
+  if ("comments" in data) {
+    count = count + data["comments"].length;
+  }
+  if ("posts" in data) {
+    count = count + data["posts"].length;
+  }
+  if ("users" in data) {
+    count = count + data["users"].length;
+  }
+  return count;
+}
 /**
  *
  */
@@ -99,6 +121,7 @@ async function notifyUserToCompleteProfile(id: string, data: FirebaseFirestore.D
     },
     data: {
       percentComplete: percent.toString(),
+      navigateTo: "profile",
     },
   };
   messaging().sendToDevice(fcmTokens, payload).then( (response) => {
