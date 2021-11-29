@@ -4,6 +4,7 @@ import * as functions from "firebase-functions";
 import {db} from "./db";
 import {messaging} from "./messaging";
 import * as _ from "lodash";
+import {getNotificationAmount} from "./notifications";
 
 type Payload = {
   notification: {
@@ -32,21 +33,25 @@ export const messageNotification = functions.firestore.document("/chats/{convers
       }
       const recipients = await Promise.all(docPromises);
       for (const recipient of recipients) {
-        const fcmTokens = recipient.get("fcm_tokens");
-        const payload: Payload = {
-          notification: {
-            title: senderName + " sent you a message.",
-            body: notificationBody,
-            sound: "default",
-            badge: "0",
-          },
-          data: {
-            conversationID: context.params.conversationId,
-            messageID: context.params.messageId,
-            navigateTo: "chats",
-          },
-        };
-        await sendNotifications(fcmTokens, payload, recipient.id);
+        const recipientData = recipient.data();
+        if (typeof recipientData != "undefined") {
+          const badgeCount = getNotificationAmount(recipientData);
+          const fcmTokens = recipientData["fcm_tokens"];
+          const payload: Payload = {
+            notification: {
+              title: senderName + " sent you a message.",
+              body: notificationBody,
+              sound: "default",
+              badge: badgeCount.toString(),
+            },
+            data: {
+              conversationID: context.params.conversationId,
+              messageID: context.params.messageId,
+              navigateTo: "chats",
+            },
+          };
+          await sendNotifications(fcmTokens, payload, recipient.id);
+        }
       }
     })
 ;

@@ -5,12 +5,14 @@ import {db} from "./db";
 import * as _ from "lodash";
 import {sprintf} from "sprintf-js";
 import {messaging} from "./messaging";
+import {getNotificationAmount} from "./notifications";
 
 type Payload = {
     notification: {
       title: string,
       body: string,
       sound: string,
+      badge: string,
     },
     data: {
       percentComplete: string,
@@ -49,27 +51,7 @@ function getPercentComplete(data: FirebaseFirestore.DocumentData): number {
   return percentCalc.getPercentComplete();
 }
 
-/**
- * Calculates amount of badge notifications the user has
- * @param {FirebaseFirestore.DocumentData} data The profile from the snapshot
- * @return {int} The percentage of the profile which is complete
- */
-function getNotificationAmount(data: FirebaseFirestore.DocumentData): number {
-  let count = 0;
-  if ("messages" in data) {
-    count = count + data["messages"].length;
-  }
-  if ("comments" in data) {
-    count = count + data["comments"].length;
-  }
-  if ("posts" in data) {
-    count = count + data["posts"].length;
-  }
-  if ("users" in data) {
-    count = count + data["users"].length;
-  }
-  return count;
-}
+
 /**
  *
  */
@@ -113,11 +95,13 @@ class PercentageCompleteCalculator {
  */
 async function notifyUserToCompleteProfile(id: string, data: FirebaseFirestore.DocumentData, percent: number) {
   const fcmTokens = data["fcm_tokens"];
+  const badgeCount = getNotificationAmount(data);
   const payload: Payload = {
     notification: {
       title: "Complete your Pairent profile!",
       body: sprintf("Your profile is %d%% complete. Show yourself off by completing your profile!", percent),
       sound: "default",
+      badge: badgeCount.toString(),
     },
     data: {
       percentComplete: percent.toString(),
