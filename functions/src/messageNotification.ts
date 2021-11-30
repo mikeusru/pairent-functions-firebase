@@ -20,6 +20,11 @@ type Payload = {
   }
 }
 
+type UnseenMessage = {
+  "conversation_id": string,
+  "message_id": string,
+}
+
 export const messageNotification = functions.firestore.document("/chats/{conversationId}/thread/{messageId}")
     .onCreate(async (snap, context) => {
       const message = snap.data();
@@ -33,8 +38,10 @@ export const messageNotification = functions.firestore.document("/chats/{convers
       }
       const recipients = await Promise.all(docPromises);
       for (const recipient of recipients) {
-        const recipientData = recipient.data();
+        let recipientData = recipient.data();
         if (typeof recipientData != "undefined") {
+          const id = recipient.id;
+          recipientData = updateUnseenMessagesInProfile(id, recipientData, context.params.messageId, context.params.conversationId);
           const badgeCount = getNotificationAmount(recipientData);
           const fcmTokens = recipientData["fcm_tokens"];
           const payload: Payload = {
@@ -55,6 +62,35 @@ export const messageNotification = functions.firestore.document("/chats/{convers
       }
     })
 ;
+
+/** Update user's unseen notifications for the badge in their profile
+ * @param {string} id the profile id
+ * @param {FirebaseFirestore.DocumentData} data The profile from the snapshot
+ * @param {string} messageID The message ID
+ * @param {string} conversationID the conversation ID
+ * @return {FirebaseFirestore.DocumentData}} updated data
+ */
+function updateUnseenMessagesInProfile(id: string, data: FirebaseFirestore.DocumentData, messageID: string, conversationID: string) {
+  const unseenMessage: UnseenMessage = {
+    "conversation_id": conversationID,
+    "message_id": messageID};
+  if ("unseen_items" in data) {
+    const unseenItems = data["unseen_items"];
+    if ("messages" in unseenItems) {
+      unseenItems["messages"].push(unseenMessage);
+    } else {
+      unseenItems["messages"] = [unseenMessage];
+    }
+    db.doc("profiles/" + id).update({unseen_items: unseenItems});
+    data["unseen_items"] = unseenItems;
+    return data;
+  } else {
+    const unseenItems = {"messages": [unseenMessage]};
+    db.doc("profiles/" + id).update({unseen_items: unseenItems});
+    data["unseen_items"] = unseenItems;
+    return data;
+  }
+}
 
 // Send notifications, and if any of the tokens don't work, remove them from the user profile
 async function sendNotifications(fcmTokens: string[], payload: Payload, recipientId: string) {
